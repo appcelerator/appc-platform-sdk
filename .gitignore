@@ -4,3 +4,4 @@ test.js
 .idea
 /test/conf/development.js
 /test/conf/production.js
+/coverage

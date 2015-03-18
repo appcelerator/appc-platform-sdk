@@ -28,33 +28,23 @@ module.exports = function(grunt) {
 			},
 			src: ['test/appc_platform_sdk_tests.js']
 		},
-		coverage: {
+		kahvesi: {
 			src: ['test/appc_platform_sdk_tests.js']
+		},
+		appcCoverage: {
+			default_options: {
+				src: 'coverage/lcov.info',
+				force: true
+			}
 		}
 	});
 
 	// Load grunt plugins for modules
 	grunt.loadNpmTasks('grunt-appc-js');
 	grunt.loadNpmTasks('grunt-mocha-test');
+	grunt.loadNpmTasks('grunt-kahvesi');
+	grunt.loadNpmTasks('grunt-appc-coverage')
 
-	// run test coverage
-	grunt.registerMultiTask('coverage', 'generate test coverage report', function() {
-		var done = this.async(),
-			cmd = BIN + 'istanbul cover --report html ' + BIN + '_mocha -- -R min ' +
-				this.filesSrc.reduce(function(p,c) { return (p || '') + ' "' + c + '" '; });
-
-		grunt.log.debug(cmd);
-		exec(cmd, function(err, stdout, stderr) {
-			if (err) { grunt.fail.fatal(err); }
-			if (/No coverage information was collected/.test(stderr)) {
-				grunt.fail.warn('No coverage information was collected. Report not generated.');
-			} else {
-				grunt.log.ok('test coverage report generated to "./coverage/index.html"');
-			}
-			done();
-		});
-	});
-
-	grunt.registerTask('cover', ['coverage']);
+	grunt.registerTask('cover', ['kahvesi', 'appcCoverage']);
 	grunt.registerTask('default', ['appcJs', 'mochaTest']);
 };
