@@ -1,6 +1,10 @@
 {
   "name": "appc-platform-sdk",
+<<<<<<< HEAD
   "version": "1.0.53",
+=======
+  "version": "1.0.52",
+>>>>>>> [CLI-389] Add proxy option to network request if available
   "description": "Appcelerator Platform SDK for node.js",
   "main": "index.js",
   "scripts": {
