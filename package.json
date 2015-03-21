@@ -1,6 +1,6 @@
 {
   "name": "appc-platform-sdk",
-  "version": "1.0.54",
+  "version": "1.0.53",
   "description": "Appcelerator Platform SDK for node.js",
   "main": "index.js",
   "scripts": {
