@@ -1,3 +1,4 @@
+// globals $config
 var should = require('should'),
 	helper = require('./helper'),
 	path = require('path'),
@@ -21,8 +22,8 @@ describe('appc-platform-AppC', function () {
 		});
 
 		it('check for default', function () {
-			if (process.env.NODE_ENV==='production' ||
-				process.env.APPC_ENV==='production' ||
+			if (process.env.NODE_ENV === 'production' ||
+				process.env.APPC_ENV === 'production' ||
 				!process.env.NODE_ENV  &&
 				!process.env.APPC_ENV) {
 				should(AppC.isProduction).be.equal(true);
@@ -76,34 +77,21 @@ describe('appc-platform-AppC', function () {
 			should(AppC.registryurl).be.equal('http://registry.com');
 			should(AppC.webeventurl).be.equal('http://webevent.com');
 			should(AppC.pubsuburl).be.equal('http://pubsub.com');
-
 		});
-
 	});
-
 
 	describe(global.$config.env + ' environment', function () {
 
-		before(function (){
+		before(function () {
 			currentSession = undefined;
 			AppC = require('../');
-			console.log(global.$config.environment);
 			AppC.setEnvironment(global.$config.environment);
 		});
 
-
 		describe('auth & session', function () {
 			this.timeout(250000);
-			/*
-			before(function (done) {
-				helper.startBrowser();
-				helper.loginGmail(function () {
-					helper.deleteEmails(done);
-				});
-			});
-			*/
 
-			it('fake user should not be able to log in', function (done){
+			it('fake user should not be able to log in', function (done) {
 				var fakeuser = helper.fakeUser;
 				AppC.Auth.login(fakeuser.username, fakeuser.password, function (err, result) {
 					should.not.exist(result);
@@ -114,7 +102,7 @@ describe('appc-platform-AppC', function () {
 
 			it('user should be able to log in', function (done) {
 				var user = global.$config.user;
-				AppC.Auth.login(user.username, user.password, function (err, result){
+				AppC.Auth.login(user.username, user.password, function (err, result) {
 					should.not.exist(err);
 					should.exist(result);
 					currentSession = result;
@@ -127,7 +115,7 @@ describe('appc-platform-AppC', function () {
 				currentSession.isValid().should.equal(true);
 			});
 
-			it.skip('should be able to request an auth code with a valid session', function (done) {
+			it('should be able to request an email auth code with a valid session', function (done) {
 				should.exist(currentSession);
 				AppC.Auth.requestLoginCode(currentSession, false, function (err, res) {
 					should.not.exist(err);
@@ -136,7 +124,7 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
-			it('should not be able to request an auth code with an invalid session', function (done) {
+			it('should not be able to request an email auth code with an invalid session', function (done) {
 
 				var invalidSession = helper.cloneSession(currentSession);
 				invalidSession.invalidate();
@@ -150,9 +138,8 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
-			it.skip('should verify the login code that was requested earlier', function (done){
-				helper.getAuthCode(function (err, res) {
-					helper.stopBrowser();
+			it('should verify the email auth code that was requested earlier', function (done) {
+				helper.getAuthCode('email', function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					AppC.Auth.verifyLoginCode(currentSession, res, function (err, res) {
@@ -164,10 +151,73 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
+			it('should be able to request an sms auth code with a valid session', function (done) {
+				should.exist(currentSession);
+				AppC.Auth.requestLoginCode(currentSession, true, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					done();
+				});
+			});
+
+			it('should not be able to request an sms auth code with an invalid session', function (done) {
+				var invalidSession = helper.cloneSession(currentSession);
+				invalidSession.invalidate();
+				invalidSession.isValid().should.equal(false);
+
+				AppC.Auth.requestLoginCode(invalidSession, true, function (err) {
+					should.exist(err);
+					err.should.have.property('message');
+					err.message.should.equal('session is not valid');
+					done();
+				});
+			});
+
+			it('should verify the sms auth code that was requested earlier', function (done) {
+				helper.getAuthCode('sms', function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					AppC.Auth.verifyLoginCode(currentSession, res, function (err, res) {
+						should.not.exist(err);
+						should.exist(res);
+						res.should.equal(true);
+						done();
+					});
+				});
+			});
+
+			it('should be able to request an email auth code with a valid session', function (done) {
+				should.exist(currentSession);
+				AppC.Auth.requestLoginCode(currentSession, false, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					done();
+				});
+			});
+
+			it('should fail to verify an invalid auth code', function (done) {
+				AppC.Auth.verifyLoginCode(currentSession, 123, function (err, res) {
+					should.exist(err);
+					should.not.exist(res);
+					err.message.should.equal('Your authorization code was invalid.');
+					done();
+				});
+			});
+
+			it('should fail to verify an auth code with an invalid session', function (done) {
+				AppC.Auth.verifyLoginCode({}, 1234, function (err, res) {
+					should.exist(err);
+					should.not.exist(res);
+					done();
+				});
+			});
+
 			it('should fail if user tries to log out with an invalid session', function (done) {
 				should.exist(currentSession);
 				should(currentSession).be.ok;
 				var invalidSession = helper.cloneSession(currentSession);
+				invalidSession.invalidate();
+				// try an invalidate again to get more code coverage
 				invalidSession.invalidate();
 				invalidSession.isValid().should.equal(false);
 
@@ -183,7 +233,8 @@ describe('appc-platform-AppC', function () {
 				should.exist(currentSession);
 				should(currentSession).be.ok;
 				currentSession.isValid().should.equal(true);
-				AppC.Auth.logout(currentSession, function () {
+				AppC.Auth.logout(currentSession, function (err) {
+					should.not.exist(err);
 					currentSession = undefined;
 					should(currentSession).not.be.ok;
 					done();
@@ -200,10 +251,12 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
+			var createdSession;
+
 			it('should create a session from ID', function (done) {
 				var username = global.$config.user.username,
 					password = global.$config.user.password;
-				helper.registryLogin(username, password, AppC.registryurl, function (err, res){
+				helper.registryLogin(username, password, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					should.exist(res.sid);
@@ -223,6 +276,36 @@ describe('appc-platform-AppC', function () {
 						should.exist(session.org);
 						should.exist(session.org.packageId);
 						should.exist(session.orgs);
+						createdSession = session;
+						done();
+					});
+				});
+			});
+
+			it('should validate the session previously created', function (done) {
+				AppC.Auth.validateSession(createdSession, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					done();
+				});
+			});
+
+			it('should get a cached session from createSessionFromID', function (done) {
+				AppC.Auth.createSessionFromID(createdSession.id, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					res.should.equal(createdSession);
+					done();
+				});
+			});
+
+			it('should invalidate a valid session', function (done) {
+				createdSession.invalidate(function (err) {
+					should.not.exist(err);
+					AppC.Auth.validateSession(createdSession, function (err, res) {
+						should.exist(err);
+						should.not.exist(res);
+						createdSession = null;
 						done();
 					});
 				});
@@ -230,10 +313,11 @@ describe('appc-platform-AppC', function () {
 		});
 
 		describe('cloud environments', function () {
+			var env = global.$config.env === 'production' ? 'production' : 'development';
 
 			before(function (done) {
 				var user = global.$config.user;
-				AppC.Auth.login(user.username, user.password,function (err, result){
+				AppC.Auth.login(user.username, user.password, function (err, result) {
 					should(result).be.ok;
 					should.not.exist(err);
 					should.exist(result);
@@ -243,77 +327,85 @@ describe('appc-platform-AppC', function () {
 
 			});
 
-			it('should get ACS_BASE environment', function () {
-				var env = global.$config.env === 'production' ? 'production' : 'development';
-				helper.getCloudEnvironment(AppC, currentSession, AppC.Cloud.ACS_BASE, env, function (err, res) {
+			it('should get ACS_BASE environment', function (done) {
+				helper.getCloudEnvironment(currentSession, AppC.Cloud.ACS_BASE, env, function (err, res) {
 					should.exist(res);
 					res.should.be.an.string;
 					should.not.exist(err);
+					done();
 				});
 			});
 
-			it('should get NODE_ACS environment', function () {
-				var env = global.$config.env === 'production' ? 'production' : 'development';
-				helper.getCloudEnvironment(AppC, currentSession, AppC.Cloud.NODE_ACS, env, function (err, res) {
+			it('should get NODE_ACS environment', function (done) {
+				helper.getCloudEnvironment(currentSession, AppC.Cloud.NODE_ACS, env, function (err, res) {
 					should.exist(res);
 					res.should.be.an.string;
 					should.not.exist(err);
+					done();
 				});
 			});
 
-			it('should get AUTH_BASE environment', function () {
-				var env = global.$config.env === 'production' ? 'production' : 'development';
-				helper.getCloudEnvironment(AppC, currentSession, AppC.Cloud.AUTH_BASE, env, function (err, res) {
+			it('should get AUTH_BASE environment', function (done) {
+				helper.getCloudEnvironment(currentSession, AppC.Cloud.AUTH_BASE, env, function (err, res) {
 					should.exist(res);
 					res.should.be.an.string;
 					should.not.exist(err);
+					done();
 				});
 			});
 
-			it('should fail to get ACS_BASE environment with bad session', function () {
-				var env = global.$config.env === 'production' ? 'production' : 'development';
-				helper.getCloudEnvironment(AppC, {}, AppC.Cloud.AUTH_BASE, env, function (err, res) {
+			it('should fail to get ACS_BASE environment with bad session', function (done) {
+				helper.getCloudEnvironment({}, AppC.Cloud.AUTH_BASE, env, function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
 					err.should.have.property('message');
-					err.message.should.containEql('session is not valid');
+					err.message.should.containEql('session is not valid. missing user');
+					done();
 				});
 			});
 
-			it('should fail to get NODE_ACS environment with bad session', function () {
-				try{
-					AppC.Cloud.getEnvironment({badSession:true},AppC.Cloud.NODE_ACS,'development');
-					should.fail();
-				} catch(e) {
-					should.exist(e);
-					e.should.have.property('message');
-					e.message.should.containEql('session is not valid');
-				}
+			it('should fail to get NODE_ACS environment with bad session', function (done) {
+				helper.getCloudEnvironment({}, AppC.Cloud.NODE_ACS, env, function (err, res) {
+					should.not.exist(res);
+					should.exist(err);
+					err.should.have.property('message');
+					err.message.should.containEql('session is not valid. missing user');
+					done();
+				});
 			});
 
-			it('should fail to get AUTH_BASE environment with bad session', function () {
-				try{
-					AppC.Cloud.getEnvironment({badSession:true},AppC.Cloud.AUTH_BASE,'development');
-					should.fail();
-				} catch(e) {
-					should.exist(e);
-					e.should.have.property('message');
-					e.message.should.containEql('session is not valid');
-				}
+			it('should fail to get AUTH_BASE environment with bad session', function (done) {
+				helper.getCloudEnvironment({}, AppC.Cloud.AUTH_BASE, env, function (err, res) {
+					should.not.exist(res);
+					should.exist(err);
+					err.should.have.property('message');
+					err.message.should.containEql('session is not valid. missing user');
+					done();
+				});
+			});
+
+			it('should fail to get a clould environment with a missing org in the session', function (done) {
+				helper.getCloudEnvironment({user:{}}, AppC.Cloud.AUTH_BASE, env, function (err, res) {
+					should.not.exist(res);
+					should.exist(err);
+					err.should.have.property('message');
+					err.message.should.containEql('session is not valid. missing org');
+					done();
+				});
 			});
 		});
 
-		describe('cloud', function () {
+		describe.skip('cloud', function () {
 
 			var api;
 			var tiApp;
 
 			before(function (done) {
-				AppC.User.switchLoggedInOrg(currentSession, global.$config.user.free_org_id, function (err, res, newSession) {
+				AppC.User.switchLoggedInOrg(currentSession, global.$config.user.developer_org_id, function (err, res, newSession) {
 					currentSession = newSession;
 					should.exist(res);
 					should.not.exist(err);
-					AppC.App.create(currentSession, path.join(__dirname, 'tiapptest4', 'tiapp.xml'), global.$config.user.free_org_id, function (err, res) {
+					AppC.App.create(currentSession, path.join(__dirname, 'tiapptest4', 'tiapp.xml'), global.$config.user.developer_org_id, function (err, res) {
 						should.not.exist(err);
 						should.exist(res);
 						tiApp = res;
@@ -329,7 +421,6 @@ describe('appc-platform-AppC', function () {
 				});
 				//TODO: Delete all apis created
 			});
-
 
 			it('should create a named app', function (done) {
 				AppC.Cloud.createNamedApp(currentSession, 'TiAppTest_' + new Date(), function (err, res) {
@@ -357,19 +448,19 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
-
 			it('should create an app', function (done) {
-				AppC.Cloud.createApp(currentSession, 'TiAppTest1', global.$config.user.free_org_id,
+				AppC.Cloud.createApp(currentSession, 'TiAppTest1', global.$config.user.developer_org_id,
 					tiApp.guid, function (err, res) {
 						should.not.exist(err);
 						should.exist(res);
 						api = res[0];
 						done();
-				});
+					}
+				);
 			});
 
 			it('should fail to create an app with invalid session', function (done) {
-				AppC.Cloud.createApp({}, 'TiAppTest1', global.$config.user.free_org_id,
+				AppC.Cloud.createApp({}, 'TiAppTest1', global.$config.user.developer_org_id,
 					tiApp.guid, function (err, res) {
 						should.exist(err);
 						should.not.exist(res);
@@ -380,7 +471,7 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should be able to create an app with no name', function (done) {
-				AppC.Cloud.createApp(currentSession, null, global.$config.user.free_org_id,
+				AppC.Cloud.createApp(currentSession, null, global.$config.user.developer_org_id,
 					tiApp.guid, function (err, res) {
 						should.exist(res);
 						should.not.exist(err);
@@ -398,7 +489,7 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should be able to create an app with no guid', function (done) {
-				AppC.Cloud.createApp(currentSession, 'TiAppTest1', global.$config.user.free_org_id, null, function (err, res) {
+				AppC.Cloud.createApp(currentSession, 'TiAppTest1', global.$config.user.developer_org_id, null, function (err, res) {
 						should.not.exist(err);
 						should.exist(res);
 						done();
@@ -415,7 +506,7 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should fail to create an app with invalid guid', function (done) {
-				AppC.Cloud.createApp(currentSession, 'TiAppTest1', global.$config.user.free_org_id,
+				AppC.Cloud.createApp(currentSession, 'TiAppTest1', global.$config.user.developer_org_id,
 					'123', function (err, res) {
 						should.exist(err);
 						should.not.exist(res);
@@ -425,13 +516,15 @@ describe('appc-platform-AppC', function () {
 					});
 			});
 
+			var apiUser;
 			it('should create an Arrow DB user object', function (done) {
 				should.exist(api);
 				should.exist(api.guid);
-				AppC.Cloud.createUser(currentSession, api.guid,{
+				apiUser = 'test_' + Date.now();
+				AppC.Cloud.createUser(currentSession, api.guid, {
 					password_confirmation: 'test',
 					password: 'test',
-					username: 'test_' + Date.now()
+					username: apiUser
 
 				}, function (err, res) {
 					should.exist(res);
@@ -440,8 +533,17 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
+			it('should retrieve the list of acs users for an app guid', function (done) {
+				AppC.Cloud.retrieveUsers(currentSession, api.guid, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					res.username.should.equal(apiUser);
+					done();
+				});
+			});
+
 			it('should fail to create an Arrow DB user object with invalid api guid', function (done) {
-				AppC.Cloud.createUser(currentSession, '123',{
+				AppC.Cloud.createUser(currentSession, '123', {
 					password_confirmation: 'test',
 					password: 'test',
 					username: 'test_' + Date.now()
@@ -457,7 +559,7 @@ describe('appc-platform-AppC', function () {
 			it('should fail to create an Arrow DB user object with not enough credentials', function (done) {
 				should.exist(api);
 				should.exist(api.guid);
-				AppC.Cloud.createUser(currentSession, api.guid,{
+				AppC.Cloud.createUser(currentSession, api.guid, {
 					password_confirmation: 'test',
 					password: 'test'
 
@@ -473,16 +575,29 @@ describe('appc-platform-AppC', function () {
 		describe('app', function () {
 
 			it('should get all the apps in the current org that the user has access to', function (done) {
-				AppC.App.findAll(currentSession, global.$config.user.org_id, function (err, res) {
+				AppC.User.switchLoggedInOrg(currentSession, global.$config.user.enterprise_org_id, function (err, res, newSession) {
+					currentSession = newSession;
+					should.exist(res);
+					should.not.exist(err);
+					AppC.App.findAll(currentSession, function (err, res) {
+						should.not.exist(err);
+						should.exist(res);
+						res.length.should.equal(global.$config.apps.numberOfApps);
+						done();
+					});
+				});
+			});
+
+			it('should get all the apps in a specific org', function (done) {
+				AppC.App.findAll(currentSession, global.$config.user.enterprise_org_id, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					res.length.should.equal(global.$config.apps.numberOfApps);
-					done()
+					done();
 				});
 			});
 
 			it('should fail to find apps in an org that the user doesnt have access to', function (done) {
-
 				AppC.App.findAll(currentSession, 123, function (err, res) {
 					should.exist(err);
 					err.message.should.equal('You do not have access privileges to view this content.');
@@ -490,7 +605,6 @@ describe('appc-platform-AppC', function () {
 					should.not.exist(res);
 					done();
 				});
-
 			});
 
 			it('should fail to find apps with an invalid session', function (done) {
@@ -503,22 +617,21 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should find a specific app by ID', function (done) {
-				AppC.App.find(currentSession,global.$config.apps.enterprise.app_id, function (err, res) {
+				AppC.App.find(currentSession, global.$config.apps.enterprise.app_id, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					res.app_name.should.equal(global.$config.apps.enterprise.app_name);
-					done()
+					done();
 				});
 			});
 
 			it('should fail to find an invalid app by ID', function (done) {
-				AppC.App.find(currentSession,1, function (err, res) {
+				AppC.App.find(currentSession, 1, function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
-					done()
+					done();
 				});
 			});
-
 
 			it('should fail to a valid app with an invalid session', function (done) {
 				AppC.App.find({}, global.$config.apps.enterprise.app_id, function (err) {
@@ -529,18 +642,17 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
-
 			it('should update an app and revert it to the original state', function (done) {
-				AppC.App.find(currentSession,global.$config.apps.enterprise.app_id, function (err, app) {
-					var originalName = $config.apps.enterprise.app_name,
-						newName = $config.apps.enterprise.app_name + '_modified';
+				AppC.App.find(currentSession, global.$config.apps.enterprise.app_id, function (err, app) {
+					var originalName = global.$config.apps.enterprise.app_name,
+						newName = global.$config.apps.enterprise.app_name + '_modified';
 					should.not.exist(err);
 					should.exist(app);
 					app.app_name.should.equal(originalName);
 					app.app_name = newName;
 					AppC.App.update(currentSession, app, function (err) {
 						should.not.exist(err);
-						AppC.App.find(currentSession,global.$config.apps.enterprise.app_id, function (err, updatedApp) {
+						AppC.App.find(currentSession, global.$config.apps.enterprise.app_id, function (err, updatedApp) {
 							should.not.exist(err);
 							should.exist(app);
 							updatedApp.app_name.should.equal(newName);
@@ -563,22 +675,18 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should fail to update an app which doesnt exist', function (done) {
-
-				AppC.App.find(currentSession, 123, function (err, app) {
+				var newApp = {
+					app_id: 123,
+					app_name: 'this_should_fail_app',
+					app_guid: 1234567890
+				};
+				AppC.App.find(currentSession, newApp, function (err, app) {
 					should.not.exist(app);
 					should.exist(err);
-
-					var newApp = {
-						app_id: 123,
-						app_name: 'this_should_fail_app',
-						app_guid: 1234567890
-					};
-
 					AppC.App.update(currentSession, newApp, function (err) {
 						should.exist(err);
 						done();
 					});
-
 				});
 			});
 
@@ -594,10 +702,25 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
+			it('should fail to update an invalid app', function (done) {
+				AppC.App.update(currentSession, {}, function (err) {
+					should.exist(err);
+					err.message.should.equal('no app_guid property found');
+					done();
+				});
+			});
 
+			it('should fail to create an app from non-existent tiapp.xml', function (done) {
+				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest0', 'none.xml'), global.$config.user.enterprise_org_id, function (err, res) {
+					should.exist(err);
+					should.not.exist(res);
+					err.message.should.equal('tiapp.xml file does not exist');
+					done();
+				});
+			});
 
 			it('should create an app from provided tiapp.xml', function (done) {
-				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), global.$config.user.org_id, function (err, res) {
+				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), global.$config.user.enterprise_org_id, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					AppC.App.delete(currentSession, res._id, function (err) {
@@ -605,12 +728,41 @@ describe('appc-platform-AppC', function () {
 						done();
 					});
 				});
-
 			});
 
+			it('should create an app from provided tiapp.xml with no org id', function (done) {
+				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					AppC.App.delete(currentSession, res._id, function (err) {
+						should.not.exist(err);
+						done();
+					});
+				});
+			});
+
+			it('should fail create an app from provided tiapp.xml with no org id and invalid session', function (done) {
+				AppC.App.create({}, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), function (err, res) {
+					should.exist(err);
+					should.not.exist(res);
+					err.message.should.equal('session is not valid');
+					done();
+				});
+			});
+
+			it('should create an app from provided tiapp.xml with a null org id', function (done) {
+				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), null, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					AppC.App.delete(currentSession, res._id, function (err) {
+						should.not.exist(err);
+						done();
+					});
+				});
+			});
 
 			it('should update an app from provided tiapp.xml', function (done) {
-				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest2', 'tiapp.xml'), global.$config.user.org_id, function (err, res) {
+				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest2', 'tiapp.xml'), global.$config.user.enterprise_org_id, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 
@@ -619,7 +771,7 @@ describe('appc-platform-AppC', function () {
 						should.exist(app);
 						app.app_name.should.equal('TiAppTest2_changeme');
 
-						AppC.App.create(currentSession, path.join(__dirname, 'tiapptest2', 'tiapp_changed.xml'), global.$config.user.org_id, function (err, res) {
+						AppC.App.create(currentSession, path.join(__dirname, 'tiapptest2', 'tiapp_changed.xml'), global.$config.user.enterprise_org_id, function (err, res) {
 							should.not.exist(err);
 							should.exist(res);
 
@@ -639,7 +791,7 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should fail to create an app from invalid tiapp.xml', function (done) {
-				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest3', 'tiapp.xml'), global.$config.user.org_id, function (err, res) {
+				AppC.App.create(currentSession, path.join(__dirname, 'tiapptest3', 'tiapp.xml'), global.$config.user.enterprise_org_id, function (err, res) {
 					should.exist(err);
 					should.not.exist(res);
 					err.code.should.equal(500);
@@ -648,7 +800,7 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('should fail to create an app from invalid session', function (done) {
-				AppC.App.create({}, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), global.$config.user.org_id, function (err, res) {
+				AppC.App.create({}, path.join(__dirname, 'tiapptest1', 'tiapp.xml'), global.$config.user.enterprise_org_id, function (err, res) {
 					should.exist(err);
 					should.exist(err.message);
 					err.message.should.equal('session is not valid');
@@ -668,6 +820,16 @@ describe('appc-platform-AppC', function () {
 
 			it('should find an enterprise package by application guid and session', function (done) {
 				AppC.App.findPackage(currentSession, global.$config.apps.enterprise.app_guid, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					res.package.should.equal('enterprise');
+					res.isPlatform.should.equal(true);
+					done();
+				});
+			});
+
+			it('should find an enterprise package by application guid and token', function (done) {
+				AppC.App.findPackage(global.$config.apps.enterprise.app_guid, global.$config.auth_token, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					res.package.should.equal('enterprise');
@@ -735,9 +897,34 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
+			it('should fail to find the team members of an app with an invalid session', function (done) {
+				AppC.App.findTeamMembers({}, global.$config.apps.enterprise.app_id, function (err, res) {
+					should.not.exist(res);
+					should.exist(err);
+					err.message.should.equal('session is not valid');
+					done();
+				});
+			});
+
+			it('should get the crittercism ID of an enterprise app', function (done) {
+				AppC.App.crittercismID(currentSession, global.$config.apps.enterprise.app_id, function (err, res) {
+					should.not.exist(err);
+					should.exist(res);
+					done();
+				});
+			});
+
+			it('should fail to get the crittercism ID of an enterprise app with invalid session', function (done) {
+				AppC.App.crittercismID({}, global.$config.apps.enterprise.app_id, function (err, res) {
+					should.exist(err);
+					should.not.exist(res);
+					done();
+				});
+			});
+
 		});
 
-		describe('feed', function (){
+		describe('feed', function () {
 
 			it('should find all the feeds for the logged in user', function (done) {
 				AppC.Feed.findAll(currentSession, function (err, res) {
@@ -748,7 +935,7 @@ describe('appc-platform-AppC', function () {
 					res.meta.total.should.be.an.Number;
 					should.exist(res.data);
 					Object.prototype.toString.call(res.data).should.equal('[object Array]');
-					if (res.data.length){
+					if (res.data.length) {
 						should.exist(res.data[0]._id);
 						should.exist(res.data[0].from);
 						should.exist(res.data[0].to);
@@ -756,8 +943,35 @@ describe('appc-platform-AppC', function () {
 						should.exist(res.data[0].timestamp);
 						should.exist(res.data[0].friendlytime);
 						should.exist(res.data[0].formattedtime);
+						done();
+					} else {
+						done();
 					}
-					done();
+				});
+			});
+
+			it('should find all the feeds for the logged in user', function (done) {
+				AppC.Feed.findAll(currentSession, {limit: 2}, function (err, res) {
+					should.exist(res);
+					should.not.exist(err);
+					should.exist(res.meta);
+					should.exist(res.meta.total);
+					res.meta.total.should.be.an.Number;
+					should.exist(res.data);
+					Object.prototype.toString.call(res.data).should.equal('[object Array]');
+					if (res.data.length) {
+						res.length.should.not.be.greaterThan(2);
+						should.exist(res.data[0]._id);
+						should.exist(res.data[0].from);
+						should.exist(res.data[0].to);
+						should.exist(res.data[0].templateData);
+						should.exist(res.data[0].timestamp);
+						should.exist(res.data[0].friendlytime);
+						should.exist(res.data[0].formattedtime);
+						done();
+					} else {
+						done();
+					}
 				});
 			});
 
@@ -769,7 +983,6 @@ describe('appc-platform-AppC', function () {
 					done();
 				});
 			});
-
 		});
 
 		describe('notification', function () {
@@ -778,15 +991,17 @@ describe('appc-platform-AppC', function () {
 					should.exist(res);
 					should.not.exist(err);
 					Object.prototype.toString.call(res).should.equal('[object Array]');
-					if (res.length){
+					if (res.length) {
 						should.exist(res[0]._id);
 						should.exist(res[0].feed_id);
 						should.exist(res[0].user_guid);
 						should.exist(res[0].message);
 						should.exist(res[0].created);
 						should.exist(res[0].feed_sample);
+						done();
+					} else {
+						done();
 					}
-					done();
 				});
 			});
 
@@ -803,14 +1018,21 @@ describe('appc-platform-AppC', function () {
 		describe('org', function () {
 
 			var orgName;
+			before(function (done) {
+				AppC.User.switchLoggedInOrg(currentSession, global.$config.user.developer_org_id, function (err, res, newSession) {
+					currentSession = newSession;
+					res.org_id.toString().should.equal(global.$config.user.developer_org_id);
+					done();
+				});
+			});
 
-			it('should return the current user org', function (done) {
+			it.skip('should return the current user org', function (done) {
 				AppC.Org.getCurrent(currentSession, function (err, org) {
 					should.not.exist(err);
 					should.exist(org);
 					_.isEqual(org, currentSession.user.org).should.equal(true);
 					should.exist(org.org_id);
-					org.org_id.toString().should.equal(global.$config.user.free_org_id);
+					org.org_id.toString().should.equal(global.$config.user.developer_org_id);
 					should.exist(org.name);
 					orgName = org.name;
 					done();
@@ -826,7 +1048,6 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
-
 			it('should get org by name', function (done) {
 				should.exist(orgName);
 				AppC.Org.getByName(currentSession, orgName, function (err, res) {
@@ -834,9 +1055,9 @@ describe('appc-platform-AppC', function () {
 					should.exist(res);
 					should.exist(res.name);
 					res.name.should.equal(orgName);
-					res.org_id.toString().should.equal(global.$config.user.free_org_id);
+					res.org_id.toString().should.equal(global.$config.user.developer_org_id);
 					done();
-				})
+				});
 			});
 
 			it('should fail to get org with invalid name', function (done) {
@@ -846,35 +1067,40 @@ describe('appc-platform-AppC', function () {
 					should.exist(err.message);
 					err.message.should.equal('Org not found');
 					done();
-				})
+				});
+			});
+
+			it('should fail to get org with invalid session', function (done) {
+				AppC.Org.getByName({}, orgName, function (err, res) {
+					should.exist(err);
+					should.not.exist(res);
+					should.exist(err.message);
+					err.message.should.equal('session is not valid');
+					done();
+				});
 			});
 
 			it('should find an org by id', function (done) {
-
-				AppC.Org.findById(currentSession, global.$config.user.free_org_id, function (err, res) {
+				AppC.Org.findById(currentSession, global.$config.user.developer_org_id, function (err, res) {
 					should.exist(res);
 					should.not.exist(err);
 					should.exist(res.org_id);
-					res.org_id.toString().should.equal(global.$config.user.free_org_id);
+					res.org_id.toString().should.equal(global.$config.user.developer_org_id);
 					done();
 				});
-
 			});
 
 			it('should fail to find an org by id with invalid session', function (done) {
-
-				AppC.Org.findById({}, global.$config.user.free_org_id, function (err, res) {
+				AppC.Org.findById({}, global.$config.user.developer_org_id, function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
 					should.exist(err.message);
 					err.message.should.equal('session is not valid');
 					done();
 				});
-
 			});
 
 			it('should fail to find an org by id with invalid org id', function (done) {
-
 				AppC.Org.findById(currentSession, '', function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
@@ -882,35 +1108,29 @@ describe('appc-platform-AppC', function () {
 					err.message.should.equal('id is not valid');
 					done();
 				});
-
 			});
 
 			it('should get an org by id', function (done) {
-
-				AppC.Org.getById(currentSession, global.$config.user.free_org_id, function (err, res) {
+				AppC.Org.getById(currentSession, global.$config.user.developer_org_id, function (err, res) {
 					should.exist(res);
 					should.not.exist(err);
 					should.exist(res.org_id);
-					res.org_id.toString().should.equal(global.$config.user.free_org_id);
+					res.org_id.toString().should.equal(global.$config.user.developer_org_id);
 					done();
 				});
-
 			});
 
 			it('should fail to get an org by id with invalid session', function (done) {
-
-				AppC.Org.getById({}, global.$config.user.free_org_id, function (err, res) {
+				AppC.Org.getById({}, global.$config.user.developer_org_id, function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
 					should.exist(err.message);
 					err.message.should.equal('session is not valid');
 					done();
 				});
-
 			});
 
 			it('should fail to get an org by id with invalid org id', function (done) {
-
 				AppC.Org.getById(currentSession, '', function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
@@ -918,7 +1138,6 @@ describe('appc-platform-AppC', function () {
 					err.message.should.equal('id is not valid');
 					done();
 				});
-
 			});
 
 			it('should fail to find the orgs that the user has access to with invalid session', function (done) {
@@ -954,8 +1173,7 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
-			// TODO: why does this sometimes fail‽
-			it.skip('cached time should be lower (or equal to) than original time for finding orgs', function () {
+			it('cached time should be lower (or equal to) than original time for finding orgs', function () {
 				(regularTime - cachedTime).should.not.be.lessThan(0);
 			});
 
@@ -963,19 +1181,16 @@ describe('appc-platform-AppC', function () {
 
 		describe('user', function () {
 
-			it('should find the current user', function (done){
-
+			it('should find the current user', function (done) {
 				AppC.User.find(currentSession, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
 					res.email.should.equal(global.$config.user.username);
 					done();
 				});
-
 			});
 
-			it('should find another user', function (done){
-
+			it('should find another user', function (done) {
 				AppC.User.find(currentSession, global.$config.another_user.guid, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
@@ -983,12 +1198,9 @@ describe('appc-platform-AppC', function () {
 					should.not.exist(res.username);
 					done();
 				});
-
 			});
 
-
-			it('should fail to find invalid user', function (done){
-
+			it('should fail to find invalid user', function (done) {
 				AppC.User.find(currentSession, '123', function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
@@ -996,11 +1208,9 @@ describe('appc-platform-AppC', function () {
 					err.message.should.equal('Resource Not Found');
 					done();
 				});
-
 			});
 
-			it('should fail to find user with invalid session', function (done){
-
+			it('should fail to find user with invalid session', function (done) {
 				AppC.User.find({}, function (err, res) {
 					should.not.exist(res);
 					should.exist(err);
@@ -1008,23 +1218,19 @@ describe('appc-platform-AppC', function () {
 					err.message.should.equal('session is not valid');
 					done();
 				});
-
 			});
 
-			it('should switch back to the original org', function (done){
-
-				AppC.User.switchLoggedInOrg(currentSession, global.$config.user.org_id, function (err, res, newSession) {
+			it('should switch back to the original org', function (done) {
+				AppC.User.switchLoggedInOrg(currentSession, global.$config.user.enterprise_org_id, function (err, res, newSession) {
 					currentSession = newSession;
 					should.not.exist(err);
 					should.exist(res);
-					res.org_id.toString().should.equal(global.$config.user.org_id);
+					res.org_id.toString().should.equal(global.$config.user.enterprise_org_id);
 					done();
 				});
-
 			});
 
-			it('should fail to switch to an invalid org', function (done){
-
+			it('should fail to switch to an invalid org', function (done) {
 				AppC.User.switchLoggedInOrg(currentSession, '123', function (err, res, newSession) {
 					currentSession = newSession;
 					should.not.exist(res);
@@ -1033,12 +1239,10 @@ describe('appc-platform-AppC', function () {
 					err.message.should.equal('id is not valid');
 					done();
 				});
-
 			});
 
-			it('should fail to switch to an org without a valid session', function (done){
-
-				AppC.User.switchLoggedInOrg({}, global.$config.user.org_id, function (err, res, newSession) {
+			it('should fail to switch to an org without a valid session', function (done) {
+				AppC.User.switchLoggedInOrg({}, global.$config.user.enterprise_org_id, function (err, res, newSession) {
 					currentSession = newSession;
 					should.not.exist(res);
 					should.exist(err);
@@ -1046,11 +1250,7 @@ describe('appc-platform-AppC', function () {
 					err.message.should.equal('session is not valid');
 					done();
 				});
-
 			});
-
 		});
-
 	});
-
 });

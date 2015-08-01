@@ -16,7 +16,7 @@ module.exports = function(grunt) {
 			options: {
 				force: false
 			},
-			src: ['index.js', 'lib/**/*.js']
+			src: ['index.js', 'lib/**/*.js', 'test/*.js']
 		},
 		mochaTest: {
 			options: {

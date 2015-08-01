@@ -1,6 +1,6 @@
 {
   "name": "appc-platform-sdk",
-  "version": "1.1.2",
+  "version": "1.1.7",
   "description": "Appcelerator Platform SDK for node.js",
   "main": "index.js",
   "scripts": {
@@ -31,14 +31,18 @@
   "devDependencies": {
     "appc-registry-sdk": "*",
     "grunt": "^0.4.5",
+    "grunt-cli": "^0.1.13",
     "grunt-mocha-test": "^0.11.0",
     "grunt-appc-js": "*",
     "prompt": "^0.2.14",
     "should": "^4.0.4",
     "mocha": "2.1.0",
     "underscore": "1.7.0",
-    "webdriverio": "2.2.2",
+    "gmail": "0.5.0",
+    "mailparser": "0.5.1",
+    "twilio": "2.2.0",
     "grunt-kahvesi": "^0.2.0",
-    "grunt-appc-coverage": "^0.2.0"
+    "grunt-appc-coverage": "^0.2.0",
+    "mocha-jenkins-reporter": "0.1.9"
   }
 }

@@ -5,7 +5,7 @@ var fs = require('fs'),
  * Loads up the configuration files in to the global $config object.
  */
 exports.load = function (env) {
-	env = env || process.env.NODE_ENV || process.env.APPC_ENV || 'production';
+	env = env || process.env.NODE_ENV || process.env.APPC_ENV || 'development';
 
 	global.$config = {
 		env: env

@@ -4,6 +4,7 @@ foo*.js
 Gruntfile.js
 out
 test
+*.enc
 user.json
 .travis.yml
 *.tgz

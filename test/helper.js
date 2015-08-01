@@ -1,171 +1,47 @@
-var ConfigLoader = require('./conf/loader'),
-	_= require('underscore'),
+var ConfigLoader = require('./conf/loader').load(),
+	_ = require('underscore'),
 	registry = require('appc-registry-sdk'),
-	webdriverio = require('webdriverio'),
 	should = require('should'),
-	loggedIn = false;
+	gm = require('gmail'),
+	mailParser = require('mailparser').MailParser,
+	gmStart = new Date(),
+	gmail = new gm.GMailInterface(),
+	twilio = require('twilio'),
+	twclient = twilio(global.$config.twilio.account_sid, global.$config.twilio.auth_token),
+	AppC = require('../');
 
-ConfigLoader.load();
-var browser = webdriverio.remote(global.$config.browserConfig);
-
-exports.setEnvironment = setEnvironment;
-exports.findEnvs = findEnvs;
 exports.fakeUser = getFakeUser();
 exports.cloneSession = cloneSession;
 exports.getCloudEnvironment = getCloudEnvironment;
 exports.registryLogin = registryLogin;
 exports.getAuthCode = getAuthCode;
-exports.loginGmail = loginGmail;
-exports.deleteEmails = deleteEmails;
-exports.startBrowser = function () { browser.init(); };
-exports.stopBrowser = function () { browser.end(); };
+exports.getRequest = getRequest;
 
-browser.
-	addCommand('loginGmail', function (done) {
-		this.pause(10000)
-			.url('https://gmail.com')
-			.getTitle(function (err, result) {
-				should.not.exist(err);
-				result.should.endWith("Gmail");
-			})
-			.call(function (){
-				if (loggedIn){
-					console.log('already logged in');
-					browser
-						.call(done);
-				} else {
-					console.log('logging into gmail');
-					browser
-						.waitFor('input[name="Email"]', 20000, expectNoErr)
-						.element('css selector', 'input[name="Email"]', expectNoErr)
-						.pause(1000)
-						.addValue('input[name="Email"]', global.$config.gmail.email, expectNoErr)
-						.pause(1000)
-						.addValue('input[name="Passwd"]', global.$config.gmail.password, expectNoErr)
-						.pause(10000)
-						.click('input[name="signIn"]')
-						.waitFor('div.ov', 10000, function (err, result) {
-							if (!err) {
-								loggedIn = true;
-							}
-							browser.call(done);
-						}
-					);
-				}
-			});
-	})
-	.addCommand('deleteEmails', function (done) {
-		this.pause(10000)
-			.url('https://gmail.com')
-			.getTitle(function (err, result) {
-				should.not.exist(err);
-				result.should.endWith("Gmail");
-			})
-			.call(function (){
-				if (loggedIn){
-					console.log('already logged in');
-					browser
-						.call(poll);
-				} else {
-					browser
-						.loginGmail(poll);
-				}
-			});
-		function poll(){
-			browser
-				.pause(10000)
-				.url("https://gmail.com", expectNoErr)
-				.waitFor('div.ov', 10000, function (err, result){
-					console.log('finding select all button');
-					if (err){
-						console.log('select all button not found, try again...');
-						setTimeout(poll, 10000);
-					} else {
-						console.log('select all button found');
-						browser
-							.pause(2000)
-							.waitFor('span.T-Jo', 10000, expectNoErr)
-							.click('span.T-Jo', expectNoErr)
-							.pause(1000)
-							.click('.ar9', function () {
-								console.log('clicked delete button');
-								browser
-									.pause(1000)
-									.call(done);
-							})
-
-					}
-				}
-			);
-		}
-	})
-	.addCommand('getAuthCode', function (done){
-		this.pause(10000)
-			.url('https://gmail.com')
-			.getTitle(function (err, result) {
-				should.not.exist(err);
-				result.should.endWith("Gmail");
-			})
-			.call(function (){
-				if (loggedIn){
-					console.log('already logged in');
-					browser
-						.call(poll);
-				} else {
-					browser
-						.loginGmail(poll);
-				}
-			});
-		function poll(){
-			browser
-				.pause(10000)
-				.url("https://gmail.com", expectNoErr)
-				.waitFor('span[email="noreply@appcelerator.com"].zF', 10000, function (err, result){
-					console.log('waiting for auth email');
-					if (err){
-						console.log('email not found, waiting...');
-						setTimeout(poll, 10000);
-					} else {
-						console.log('email found');
-						browser
-							.pause(2000)
-							.waitFor('.y6', 10000, expectNoErr)
-							.click('.y6', expectNoErr)
-							.waitFor('p[style="font-family:Helvetica,sans-serif;font-size:14px;line-height:20px;margin-left:20px;margin-right:20px;color:#333333"] b', 10000, expectNoErr)
-							.getText('p[style="font-family:Helvetica,sans-serif;font-size:14px;line-height:20px;margin-left:20px;margin-right:20px;color:#333333"] b', function (err, result) {
-								console.log('found auth code: ' + result);
-								done(null, result);
-							}
-						);
-					}
-				}
-			);
-		}
-	});
-
-function deleteEmails(callback) {
-	browser.deleteEmails(callback);
-}
-
-function getAuthCode(callback) {
-	browser.getAuthCode(callback);
-}
-
-function loginGmail(callback) {
-	browser.loginGmail(callback);
-}
-
-function getCloudEnvironment(sdk, session, type, name, callback) {
+/**
+ * Performs a try/catch on the Cloud.getEnvironment function so that it cleans up the unit tests
+ * @param session
+ * @param type
+ * @param name
+ * @param callback
+ * @returns {*}
+ */
+function getCloudEnvironment(session, type, name, callback) {
 	try {
-		return callback(null, sdk.Cloud.getEnvironment(session, type, name));
+		return callback(null, AppC.Cloud.getEnvironment(session, type, name));
 	} catch (err) {
 		return callback(err);
 	}
 }
 
-function registryLogin(username, password, registryURL, callback) {
+/**
+ * Helper function to log into the registry
+ * @param username    platform username
+ * @param password    platform password
+ * @param callback    called after login finishes
+ */
+function registryLogin(username, password, callback) {
 	var api = new registry('login');
-	api.baseurl = registryURL || 'https://software.appcelerator.com';
+	api.baseurl = AppC.registryurl;
 	api.body({
 		username: username,
 		password: password,
@@ -183,101 +59,21 @@ function registryLogin(username, password, registryURL, callback) {
 	});
 }
 
-
-function findEnvs(ignoreConf) {
-	var envs = ['production', 'development', 'local'];
-	if (conf.environments && !ignoreConf) {
-		for (var key in conf.environments) {
-			var index = envs.indexOf(key),
-				exists = index > -1;
-			if (_.isEmpty(conf.environments[key]) || !conf.environments[key].baseurl) {
-				if (exists) {
-					envs.splice(index, 1);
-				}
-			} else {
-				if (!exists) {
-					envs.push(key);
-				}
-			}
-		}
-	}
-	return envs;
-}
-
-/*
- * Returns the environment specified.
- * Returns false if the env is to be skipped or does not exist
- * Returns default if nothing is set in the config
+/**
+ * returns credentials for a unique fake user
+ * @returns {{username: string, password: string}}
  */
-function getEnvironment(env, envs, ignoreConf) {
-
-	if (typeof envs === "boolean" ) {
-		ignoreConf = envs;
-		envs = null;
-	}
-	if (!envs) {
-		envs = findEnvs(ignoreConf);
-	}
-	if (envs.indexOf(env) == -1) {
-		// Environment either doesn't exist or should be skipped
-		return false;
-	}
-
-	if (conf.environments[env] && !ignoreConf) {
-		// env is in the config
-		return {
-			"baseurl": conf.environments[env].baseurl,
-			"isProduction": typeof conf.environments[env].isProduction !== 'undefined' ? conf.environments[env].isProduction : false,
-			"supportUntrusted": typeof conf.environments[env].supportUntrusted !== 'undefined' ? conf.environments[env].supportUntrusted : true
-		};
-	} else {
-		// get the default
-		return 'default';
-	}
-}
-
-/*
- * Sets the environment to the one which the string specified represents.
- * Returns true if successful, and false on a failure to find the environment specified
- */
-function setEnvironment(sdk, env, envs, ignoreConf) {
-
-	if (typeof envs === "boolean" ) {
-		ignoreConf = envs;
-		envs = null;
-	}
-
-	var gotEnv = getEnvironment(env, envs, ignoreConf);
-	if (!gotEnv) {
-		return false;
-	} else if (gotEnv === 'default') {
-		switch(env) {
-			case "production":
-				sdk.setProduction();
-				break;
-			case "development":
-				sdk.setDevelopment();
-				break;
-			case "local":
-				sdk.setLocal();
-				break;
-			default :
-				sdk.setEnvironment();
-				break;
-		}
-	} else {
-		sdk.setEnvironment(gotEnv);
-	}
-	return true;
-}
-
 function getFakeUser() {
 	return {
-		"username" : "fake_" + Date.now(),
-		"password" : "test"
+		'username' : 'fake_' + Date.now(),
+		'password' : 'test'
 	};
 }
 
+/**
+ * Returns a duplicate of the session object passed in
+ * @param session
+ */
 function cloneSession(session) {
 	var clone = _.map(clone, _.clone(session));
 	clone._invalidate = session._invalidate;
@@ -287,9 +83,137 @@ function cloneSession(session) {
 	return clone;
 }
 
-function expectNoErr() {
-	return function (err, res) {
-		should.not.exist(err);
-	};
+/**
+ * Fetch the auth code which was sent via email or sms
+ * @param method     email or sms
+ * @param callback   The callback to fire when finished
+ */
+function getAuthCode(method, callback) {
+	switch (method) {
+		case 'sms':
+			getLastSMS(callback);
+			break;
+		case 'email':
+			loginGmail(global.$config.gmail.email, global.$config.gmail.password, function (err) {
+				if (err) { return callback (err); }
+				retryGetLastEmail(15000, 20, function (err, email) {
+					if (email && email.html && email.html.match(/Authorization Code: <b>([0-9]{4})/)) {
+						return callback(null, email.html.match(/Authorization Code: <b>([0-9]{4})/)[1]);
+					} else {
+						return callback (err || 'No email found');
+					}
+				});
+			});
+			break;
+		default:
+			callback(new Error('Invalid method specified'));
+	}
 }
 
+/**
+ * Log in to gmail using the provided email and password.
+ *
+ * @param email     Email address to log in to
+ * @param password  Password to use during log in
+ * @param callback  The callback to fire when finished
+ *
+ * @returns         Any errors that occurred during login
+ */
+function loginGmail(email, password, callback) {
+	gmail.connect(email, password, function (err) {
+		callback(err);
+	});
+}
+
+/**
+ * Retrieve the most recent email in the inbox.
+ *
+ * @param callback  The callback to fire when finished
+ *
+ * @returns {Error} No emails could be found
+ * @returns {JSON}  The most recent email in the inbox
+ */
+function getLastEmail(callback) {
+	var fetcher = gmail.get({
+			since: gmStart
+		}),
+		lastMessageId,
+		lastMessage;
+
+	fetcher.on('fetching', function (ids, cancel) {
+		if (ids.length === 0) {
+			cancel();
+			return callback(new Error('No emails in the inbox'), null);
+		} else {
+			lastMessageId = ids[ids.length - 1];
+		}
+	});
+
+	fetcher.on('fetched', function (message) {
+		message.should.have.property('uid');
+		// we are interested in the last message
+		if (+message.uid === +lastMessageId) {
+			lastMessage = message.eml;
+		}
+	});
+
+	fetcher.on('end', function () {
+		// Parse the email after it has been received
+		var parser = new mailParser();
+		parser.on('end', function (mail) {
+			callback(null, mail);
+		});
+		parser.write(lastMessage);
+		parser.end();
+	});
+}
+
+/**
+ * a basic method to re-call a function until no error occurs or .
+ * @param fn
+ * @param timeout
+ * @param times
+ * @param cb
+ */
+function retryGetLastEmail(timeout, times, cb) {
+	setTimeout(function () {
+		getLastEmail(function (err, res) {
+			if (err) {
+				if (!--times) {
+					return cb(err);
+				}
+				retryGetLastEmail(timeout, times, cb);
+			} else {
+				return cb(err, res);
+			}
+		});
+	}, timeout);
+}
+
+/**
+ * A function to fetch the last SMS with an auth code recieved from twilio
+ * @param callback
+ */
+function getLastSMS(callback) {
+	twclient.sms.messages.list(function (err, results) {
+		for (var c = 0; c < results.sms_messages.length; c++) {
+			var message = results.sms_messages[c];
+			if (message.direction === 'inbound') {
+				var match = /Appcelerator (device|phone) (authorization|verification) code: (\d{4})/.exec(message.body);
+				if (match && match.length) {
+					callback(null, match[3]);
+					break;
+				}
+			}
+		}
+	});
+}
+
+/**
+ * A function to get a request object
+ * @param session
+ * @returns {Object}
+ */
+function getRequest(session) {
+	return AppC.createRequest(session, '/api/v1/auth/checkSession');
+}
