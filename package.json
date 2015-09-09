@@ -26,7 +26,7 @@
     "debug": "^2.1.0",
     "getmac": "^1.0.6",
     "request": "^2.61.0",
-    "tough-cookie": "^0.12.1"
+    "tough-cookie": "^2.0.0"
   },
   "devDependencies": {
     "appc-registry-sdk": "*",
