@@ -303,6 +303,27 @@ describe('appc-platform-AppC', function () {
 				});
 			});
 
+			it('should fail to get entitlements from a invalid id', function (done) {
+				AppC.Auth.getEntitlements('1234', function (err, entitlements) {
+					should.exist(err);
+					should.not.exist(entitlements);
+					should.exist(err.message);
+					err.message.should.equal('invalid session');
+					done();
+				});
+			});
+
+			it('should get entitlements from a session', function (done) {
+				AppC.Auth.getEntitlements(createdSession.id, function (err, entitlements) {
+					should.not.exist(err);
+					should.exist(entitlements);
+					should.exist(entitlements.id);
+					should.exist(entitlements.name);
+					should.exist(entitlements.partners);
+					done();
+				});
+			});
+
 			it('should get a cached session from createSessionFromID', function (done) {
 				AppC.Auth.createSessionFromID(createdSession.id, function (err, res) {
 					should.not.exist(err);
