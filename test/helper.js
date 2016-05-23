@@ -48,7 +48,7 @@ function getCloudEnvironment(session, type, name, callback) {
  * @param callback    called after login finishes
  */
 function registryLogin(username, password, callback) {
-	var api = new registry('login');
+	var api = new registry('login'); // jshint ignore:line
 	api.baseurl = AppC.registryurl;
 	api.body({
 		username: username,
@@ -167,7 +167,7 @@ function getLastEmail(callback) {
 
 	fetcher.on('end', function () {
 		// Parse the email after it has been received
-		var parser = new mailParser();
+		var parser = new mailParser(); // jshint ignore:line
 		parser.on('end', function (mail) {
 			callback(null, mail);
 		});
