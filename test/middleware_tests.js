@@ -339,28 +339,29 @@ describe('middleware', function () {
 				},
 				jar: jar
 			};
+			var obj = {
+				user: {
+					'_id':'54d53480b867bc232dc3ea1d',
+					user_id:1503110,
+					guid:'b74b9657-a684-4f86-93af-542bec92e50b',
+					openid:'54cc6929-1c23-4aa2-89be-ce86cb80d229',
+					firstname:'appc-platform-sdk',
+					lastname:'test user',
+					username:'test.appcelerator@gmail.com',
+					email:'test.appcelerator@gmail.com',
+					is_staff:false,
+					org_id:100001933,
+					plan: 'enterprise'
+				},
+				isNew: true
+			};
 			request(opts, function (err, resp, body) {
 				should(err).be.not.ok;
 				should(resp.statusCode).be.equal(200);
 				should(resp.headers).have.property('set-cookie');
 				should(resp.headers[0]).match(/^session=/);
 				should(resp.headers[1]).match(/^session\.sig=/);
-				should(body).eql(JSON.stringify({
-					user: {
-						'_id':'54d53480b867bc232dc3ea1d',
-						user_id:1503110,
-						guid:'b74b9657-a684-4f86-93af-542bec92e50b',
-						openid:'54cc6929-1c23-4aa2-89be-ce86cb80d229',
-						firstname:'appc-platform-sdk',
-						lastname:'test user',
-						username:'test.appcelerator@gmail.com',
-						email:'test.appcelerator@gmail.com',
-						is_staff:false,
-						org_id:100001933,
-						plan: 'enterprise'
-					},
-					isNew: true
-				}));
+				should(body).eql(JSON.stringify(obj));
 				// make sure cookie got set
 				should(jar._jar.store.idx).have.property('127.0.0.1');
 				should(jar._jar.store.idx['127.0.0.1']['/']).have.property('session');
@@ -368,22 +369,10 @@ describe('middleware', function () {
 				request(opts, function (err, resp, body) {
 					should(err).be.not.ok;
 					should(resp.statusCode).be.equal(200);
-					should(body).eql(JSON.stringify({
-						user: {
-							'_id':'54d53480b867bc232dc3ea1d',
-							user_id:1503110,
-							guid:'b74b9657-a684-4f86-93af-542bec92e50b',
-							openid:'54cc6929-1c23-4aa2-89be-ce86cb80d229',
-							firstname:'appc-platform-sdk',
-							lastname:'test user',
-							username:'test.appcelerator@gmail.com',
-							email:'test.appcelerator@gmail.com',
-							is_staff:false,
-							org_id:100001933,
-							plan: 'enterprise'
-						},
-						isNew: false
-					}));
+					var data = JSON.parse(body);
+					should(data.user).be.ok;
+					should(data.user._id).be.equal(obj.user._id);
+					should(data.isNew).be.equal(false);
 					done();
 				});
 			});
@@ -417,29 +406,30 @@ describe('middleware', function () {
 				jar: jar,
 				followRedirect: false
 			};
+			var obj = {
+				user: {
+					'_id':'54d53480b867bc232dc3ea1d',
+					user_id:1503110,
+					guid:'b74b9657-a684-4f86-93af-542bec92e50b',
+					openid:'54cc6929-1c23-4aa2-89be-ce86cb80d229',
+					firstname:'appc-platform-sdk',
+					lastname:'test user',
+					username:'test.appcelerator@gmail.com',
+					email:'test.appcelerator@gmail.com',
+					is_staff:false,
+					org_id:100001933,
+					plan: 'enterprise'
+				},
+				isNew: true,
+				revalidated: false
+			};
 			request(opts, function (err, resp, body) {
 				should(err).be.not.ok;
 				should(resp.statusCode).be.equal(200);
 				should(resp.headers).have.property('set-cookie');
 				should(resp.headers[0]).match(/^session=/);
 				should(resp.headers[1]).match(/^session\.sig=/);
-				should(body).eql(JSON.stringify({
-					user: {
-						'_id':'54d53480b867bc232dc3ea1d',
-						user_id:1503110,
-						guid:'b74b9657-a684-4f86-93af-542bec92e50b',
-						openid:'54cc6929-1c23-4aa2-89be-ce86cb80d229',
-						firstname:'appc-platform-sdk',
-						lastname:'test user',
-						username:'test.appcelerator@gmail.com',
-						email:'test.appcelerator@gmail.com',
-						is_staff:false,
-						org_id:100001933,
-						plan: 'enterprise'
-					},
-					isNew: true,
-					revalidated: false
-				}));
+				should(body).eql(JSON.stringify(obj));
 				// make sure cookie got set
 				should(jar._jar.store.idx).have.property('127.0.0.1');
 				should(jar._jar.store.idx['127.0.0.1']['/']).have.property('session');
@@ -447,23 +437,11 @@ describe('middleware', function () {
 				request(opts, function (err, resp, body) {
 					should(err).be.not.ok;
 					should(resp.statusCode).be.equal(200);
-					should(body).eql(JSON.stringify({
-						user: {
-							'_id':'54d53480b867bc232dc3ea1d',
-							user_id:1503110,
-							guid:'b74b9657-a684-4f86-93af-542bec92e50b',
-							openid:'54cc6929-1c23-4aa2-89be-ce86cb80d229',
-							firstname:'appc-platform-sdk',
-							lastname:'test user',
-							username:'test.appcelerator@gmail.com',
-							email:'test.appcelerator@gmail.com',
-							is_staff:false,
-							org_id:100001933,
-							plan: 'enterprise'
-						},
-						isNew: false,
-						revalidated: true
-					}));
+					var data = JSON.parse(body);
+					should(data.user).be.ok;
+					should(data.user._id).be.equal(obj.user._id);
+					should(data.isNew).be.equal(false);
+					should(data.revalidated).be.equal(true);
 					done();
 				});
 			});

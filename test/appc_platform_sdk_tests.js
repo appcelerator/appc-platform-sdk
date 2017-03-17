@@ -597,7 +597,7 @@ describe('appc-platform-AppC', function () {
 					AppC.App.findAll(currentSession, function (err, res) {
 						should.not.exist(err);
 						should.exist(res);
-						res.length.should.equal(global.$config.apps.numberOfApps);
+						res.length.should.not.be.below(global.$config.apps.numberOfApps);
 						done();
 					});
 				});
@@ -607,7 +607,7 @@ describe('appc-platform-AppC', function () {
 				AppC.App.findAll(currentSession, global.$config.user.enterprise_org_id, function (err, res) {
 					should.not.exist(err);
 					should.exist(res);
-					res.length.should.equal(global.$config.apps.numberOfApps);
+					res.length.should.not.be.below(global.$config.apps.numberOfApps);
 					done();
 				});
 			});
@@ -1188,7 +1188,7 @@ describe('appc-platform-AppC', function () {
 			});
 
 			it('cached time should be lower (or equal to) than original time for finding orgs', function () {
-				(regularTime - cachedTime).should.not.be.lessThan(0);
+				(regularTime - cachedTime).should.not.be.lessThan(-1);
 			});
 
 		});
