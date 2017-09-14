@@ -6,8 +6,14 @@ timestamps() {
     sh("echo ${env.JOB_NAME}")
     sh("echo ${env.JOB_BASE_NAME}")
 
-    def scmVars = checkout scm
-    sh("echo ${scmVars}")
+    // github-organization-plugin jobs are named as 'org/repo/branch'
+    tokens = "${env.JOB_NAME}".tokenize('/')
+    org = tokens[tokens.size()-3]
+    repo = tokens[tokens.size()-2]
+    branch = tokens[tokens.size()-1]
+    sh("echo ${org}")
+    sh("echo ${repo}")
+    sh("echo ${branch}")
 
     buildNPMPackage {
       publish = false
