@@ -6,6 +6,9 @@ timestamps() {
     sh("echo ${env.JOB_NAME}")
     sh("echo ${env.JOB_BASE_NAME}")
 
+    def scmVars = checkout scm
+    sh("echo ${scmVars}")
+
     buildNPMPackage {
       publish = false
       // nodeVersion = '6.9.5'
