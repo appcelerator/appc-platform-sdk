@@ -1,5 +1,7 @@
 library 'pipeline-library'
 
+sh("echo ${env.JOB_NAME}")
+
 buildNPMPackage {
   publish = false
   // nodeVersion = '6.9.5'
