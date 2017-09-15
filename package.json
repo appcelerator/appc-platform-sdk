@@ -4,7 +4,7 @@
   "description": "Appcelerator Platform SDK for node.js",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_ENV=development nyc -r text-summary --temp-directory ./coverage --clean mocha -R spec -t 40000 --check-leaks",
+    "test": "APPC_ENV=development nyc -r text-summary --temp-directory ./coverage --clean mocha -R spec -t 40000 --check-leaks",
     "lint": "eslint --ext .js ./"
   },
   "bugs": {
