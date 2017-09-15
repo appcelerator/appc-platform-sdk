@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "APPC_ENV=development nyc -r text-summary --temp-directory ./coverage --clean mocha -R spec -t 40000 --check-leaks",
-    "lint": "eslint --ext .js ./"
+    "lint": "eslint --ext .js ./",
+    "ci-lint": "eslint --ext .js ./ || exit 0"
   },
   "bugs": {
     "url": "https://github.com/appcelerator/appc-platform-sdk/issues"

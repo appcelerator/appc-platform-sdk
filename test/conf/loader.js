@@ -13,7 +13,6 @@ exports.load = function (env) {
 
 	[ 'default', env ].forEach(function (env) {
 		var file = path.join(__dirname, env + '.js');
-		console.log('file to load', file);
 		if (fs.existsSync(file)) {
 			(function mix(dest, src) {
 				Object.keys(src).forEach(function (p) {
@@ -24,7 +23,6 @@ exports.load = function (env) {
 					}
 				});
 			}(global.$config, require(file)));
-			console.log('global.$config', global.$config);
 		}
 	});
 };
