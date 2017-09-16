@@ -31,13 +31,13 @@ describe('Appc.Analytics', function () {
 			resp.json(req.body);
 			notifier && notifier(null, req.body);
 		});
+		fs.existsSync(Appc.Analytics.analyticsDir) && wrench.rmdirSyncRecursive(Appc.Analytics.analyticsDir);
 		app.listen(app.get('port'), function () {
 			originalUrl = Appc.Analytics.url;
 			originalInterval = Appc.Analytics.flushInterval;
 			Appc.Analytics.url = 'http://127.0.0.1:' + app.get('port') + '/track';
 			done();
 		});
-		fs.existsSync(Appc.Analytics.analyticsDir) && wrench.rmdirSyncRecursive(Appc.Analytics.analyticsDir);
 	});
 
 	after(function (done) {
