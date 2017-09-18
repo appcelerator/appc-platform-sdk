@@ -1,4 +1,4 @@
-library 'pipeline-library@buildSetup'
+library 'pipeline-library'
 
 node {
 	stage ('Lint') {
