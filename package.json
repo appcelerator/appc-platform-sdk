@@ -1,10 +1,12 @@
 {
   "name": "appc-platform-sdk",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Appcelerator Platform SDK for node.js",
   "main": "index.js",
   "scripts": {
-    "test": "grunt"
+    "test": "APPC_ENV=development nyc -r text-summary --temp-directory ./coverage --clean mocha -R spec -t 40000 --check-leaks",
+    "lint": "eslint --ext .js ./",
+    "ci-lint": "eslint --ext .js ./ || exit 0"
   },
   "bugs": {
     "url": "https://github.com/appcelerator/appc-platform-sdk/issues"
@@ -33,17 +35,15 @@
     "body-parser": "^1.17.2",
     "clone": "^2.1.1",
     "cookie-session": "^1.2.0",
+    "eslint": "^4.6.1",
+    "eslint-config-axway": "^2.0.2",
+    "eslint-plugin-mocha": "^4.11.0",
     "express": "^4.15.3",
     "gmail": "0.5.0",
-    "grunt": "^0.4.5",
-    "grunt-cli": "^1.2.0",
-    "grunt-appc-coverage": "^0.3.3",
-    "grunt-eslint": "^19.0.0",
-    "grunt-kahvesi": "^1.0.2",
-    "grunt-mocha-test": "^0.13.2",
     "mailparser": "^0.5.1",
-    "mocha": "^3.4.1",
+    "mocha": "^3.5.0",
     "mocha-jenkins-reporter": "^0.3.8",
+    "nyc": "^11.2.1",
     "prompt": "^1.0.0",
     "should": "^11.2.1",
     "twilio": "^2.11.1",
