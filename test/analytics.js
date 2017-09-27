@@ -23,35 +23,43 @@ describe('Appc.Analytics', function () {
 
 	this.timeout(30000);
 
+	function cleanup() {
+		if (fs.existsSync(Appc.Analytics.dir)) {
+			wrench.rmdirSyncRecursive(Appc.Analytics.dir);
+		}
+	}
+
+	function proxy() {
+		Appc.Analytics.configure({ url: 'http://127.0.0.1:' + app.get('port') + '/track' });
+	}
+
 	before(function (done) {
 		app = express();
 		app.set('port', 4000 + parseInt(1000 * Math.random()));
 		app.use(bodyparser.json());
-		app.post('/track', function (req, resp, next) {
-			resp.json(req.body);
-			notifier && notifier(null, req.body);
+		app.post('/track', function (req, resp) {
+			resp.status(204).end();
+			notifier && setImmediate(notifier.bind(notifier, null, req.body));
 		});
 		app.listen(app.get('port'), function () {
 			originalUrl = Appc.Analytics.url;
 			originalInterval = Appc.Analytics.flushInterval;
-			Appc.Analytics.url = 'http://127.0.0.1:' + app.get('port') + '/track';
+			proxy();
 			done();
 		});
-		fs.existsSync(Appc.Analytics.analyticsDir) && wrench.rmdirSyncRecursive(Appc.Analytics.analyticsDir);
 	});
 
-	after(function (done) {
-		Appc.Analytics.url = originalUrl;
-		Appc.Analytics.flushInterval = originalInterval;
-		fs.existsSync(Appc.Analytics.analyticsDir) && wrench.rmdirSyncRecursive(Appc.Analytics.analyticsDir);
-		done();
+	after(function () {
+		Appc.Analytics.configure({
+			url: originalUrl,
+			interval: originalInterval
+		});
 	});
 
+	beforeEach(cleanup);
 	afterEach(function () {
-		Appc.Analytics.stopFlush();
-		Appc.Analytics.url = 'http://127.0.0.1:' + app.get('port') + '/track';
-		notifier = null;
-		fs.existsSync(Appc.Analytics.analyticsDir) && wrench.rmdirSyncRecursive(Appc.Analytics.analyticsDir);
+		proxy();
+		cleanup();
 	});
 
 	it('should send analytics data with guid and event only', function (done) {
@@ -161,9 +169,9 @@ describe('Appc.Analytics', function () {
 		});
 	});
 
-	it.skip('should send analytics data with no callback', function (done) {
+	it('should send analytics data with no callback', function (done) {
 		should(Appc.Analytics).be.an.object;
-		Appc.Analytics.flushInterval = 1000;
+		Appc.Analytics.configure({ interval: 1000 });
 		notifier = function (err, result) {
 			should(err).not.be.ok();
 			should(result).be.an.array;
@@ -174,28 +182,29 @@ describe('Appc.Analytics', function () {
 			should(result[0].data).be.eql({ a: 1 });
 			done();
 		};
-		Appc.Analytics.sendEvent('guid', { data: { a: 1 } });
+		Appc.Analytics.sendEvent('guid', 'event', { data: { a: 1 } });
 	});
 
-	it.skip('should send analytics data immediate', function (done) {
+	it('should send analytics data immediate', function (done) {
 		should(Appc.Analytics).be.an.object;
-		notifier = function (err, result) {
+		notifier = null;
+		Appc.Analytics.sendEvent('guid', 'event', {}, function (err, result, sent) {
 			should(err).not.be.ok();
-			should(result).be.an.array;
+			should(result).be.an.Array();
 			should(result).have.length(1);
 			should(result[0]).have.property('id');
 			should(result[0]).have.property('aguid', 'guid');
+			should(sent).equal(true);
 			done();
-		};
-		Appc.Analytics.sendEvent('guid', null, null, true);
+		}, true);
 	});
 
 	it('should send analytics to real url and get back result', function (done) {
 		should(Appc.Analytics).be.an.object;
-		Appc.Analytics.url = originalUrl;
+		Appc.Analytics.configure({ url: originalUrl });
 		Appc.Analytics.sendEvent(global.$config.apps.enterprise.app_guid, 'app.feature', {}, function (err, result, sent) {
 			should(err).not.be.ok();
-			should(result).be.an.array;
+			should(result).be.an.Array();
 			should(result).have.length(1);
 			should(result[0]).have.property('id');
 			should(result[0]).have.property('mid');
@@ -212,12 +221,11 @@ describe('Appc.Analytics', function () {
 		});
 	});
 
-	it.skip('should send analytics after queuing', function (done) {
-		should(Appc.Analytics).be.an.object;
-		Appc.Analytics.flushInterval = 10;
+	it('should send analytics after queuing', function (done) {
+		should(Appc.Analytics).be.an.Object();
 		notifier = function (err, result) {
 			should(err).not.be.ok();
-			should(result).be.an.array;
+			should(result).be.an.Array();
 			should(result).have.length(4);
 			should(result[0].data).be.eql({ a: 1 });
 			should(result[1].data).be.eql({ a: 2 });
@@ -225,19 +233,23 @@ describe('Appc.Analytics', function () {
 			should(result[3].data).be.eql({ a: 4 });
 			done();
 		};
-		Appc.Analytics.sendEvent('guid', { data: { a: 1 } });
-		Appc.Analytics.sendEvent('guid', { data: { a: 2 } });
-		Appc.Analytics.sendEvent('guid', { data: { a: 3 } });
-		Appc.Analytics.sendEvent('guid', { data: { a: 4 } });
+		Appc.Analytics.configure({ interval: 100 });
+		function triggerSend(order) {
+			setTimeout(() => Appc.Analytics.sendEvent('guid', 'event', { data: { a: order } }), order * 5);
+		};
+		triggerSend(1);
+		triggerSend(2);
+		triggerSend(3);
+		triggerSend(4);
 	});
 
-	it.skip('should send session start and end', function (done) {
-		should(Appc.Analytics).be.an.object;
-		Appc.Analytics.flushInterval = 10;
+	it('should send session start and end', function (done) {
+		should(Appc.Analytics).be.an.Object();
+		Appc.Analytics.configure({ interval: 100 });
 		var session;
 		notifier = function (err, result) {
 			should(err).not.be.ok();
-			should(result).be.an.array;
+			should(result).be.an.Array();
 			should(result).have.length(3);
 			should(result[0]).have.property('event', 'ti.start');
 			should(result[1]).have.property('event', 'app.feature');
@@ -250,8 +262,7 @@ describe('Appc.Analytics', function () {
 		session = Appc.Analytics.createSession('guid');
 		should(session).be.an.object;
 		should(session.end).be.a.function;
-		session.send({ a: 1 });
-		session.end();
+		setTimeout(() => session.send('app.feature', { a: 1 }), 5);
+		setTimeout(() => session.end(), 10);
 	});
-
 });
